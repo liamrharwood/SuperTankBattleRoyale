@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<!-- 
+
+Super Tank Battle Royale Splash Screen
+
+-->
+<html>
+    <head>
+        <title>Super Tank Battle Royale</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script type="text/javascript"
+        src = "simpleGame.js"></script>
+        <script type="text/javascript">
+
+            var scene;
+
+            var background;
+
+            // Show the splash screen
+            function splash() {
+
+                scene = new Scene();
+
+
+                background = new Sprite(scene, "splash.png", 800, 600);
+                background.setSpeed(0);
+                background.setPosition(400, 300);
+                scene.start();
+
+            }
+
+            function update() {
+                background.update();
+            }
+        </script>
+        <style type="text/css">
+
+            canvas {
+                padding-right: 0;
+                padding-left: 0;
+                margin-left: auto;
+                margin-right: auto;
+                display: block;
+            }
+
+            h2 {
+                text-align: center;
+            }
+
+            body {
+                background-color:gray;
+                color: white;
+            }
+            #start {
+                text-align: center;
+            }
+
+            button {
+                margin: auto;
+                padding: 10px;
+
+            }
+
+        </style>
+    </head>
+    <body onload="splash()">
+
+        <h2>W and S to control the turret, A and D to control the tank, space 
+            to fire</h2>
+
+        <div id="start">
+            <a href ="tanks.html">
+                <button type = "button">
+                    Start Game
+                </button>
+            </a>
+        </div>
+
+    </body>
+
+</html>

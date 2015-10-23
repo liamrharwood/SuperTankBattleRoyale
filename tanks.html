@@ -1,0 +1,438 @@
+<!DOCTYPE HTML>
+<!-- 
+
+Super Tank Battle Royale
+An HTML5 Game by Liam Harwood and Cristian Hernandez
+
+-->
+<html lang="en-US">
+    <head>
+        <meta charset="UTF-8">
+        <title>Super Tank Battle Royale</title>
+        <script type="text/javascript"
+        src = "simpleGame.js"></script>
+        <script type="text/javascript">
+
+            // The scene variable
+            var game;
+
+            // Current difficulty level
+            var level;
+
+            // Player health and score
+            var health;
+            var score;
+
+            // Current score goal to reach the next level
+            var scoreThreshold;
+
+            // Hold HTML elements manipulated by JS
+            var stats;
+            var message;
+            var restartButton;
+
+            // Timers used for gameplay, explosion timing, and music looping
+            var timer;
+            var explosionTimer;
+            var musicTimer;
+
+            // Hold sound files
+            var fireMp3;
+            var explodeMp3;
+            var musicMp3;
+            var hurtMp3;
+
+            // Length of the game music in seconds
+            var MUSIC_LENGTH = 163;
+
+            // Hold ingame objects/sprites
+            var tankGreen;
+            var tanks;
+            var explosions;
+
+            // Total enemy tanks allowed on screen
+            var numTanks;
+
+            // Holds the background sprite
+            var background;
+
+            // The bullet object
+            function Bullet(owner) {
+                //owner is the tank owning this bullet
+
+                var tBullet = new Sprite(game, "bullet.png", 5, 5);
+
+                tBullet.owner = owner;
+                tBullet.hide();
+                tBullet.setBoundAction(DIE);
+
+                tBullet.fire = function () {
+                    fireMp3 = new Sound("fire.mp3");
+                    fireMp3.play();
+                    //begin at center of player tank
+                    //pointing in tank turret's direction
+                    this.setPosition(this.owner.x, this.owner.y - 10);
+                    this.setMoveAngle(this.owner.turret.getImgAngle());
+                    this.setSpeed(20);
+                    this.show();
+
+                };
+
+                tBullet.checkGravity = function () {
+                    this.addVector(180, 1);
+                };
+
+                return tBullet;
+            }
+
+            // The player tank object
+            function UserTank() {
+                var tTank = new Sprite(game, "tank.png", 70, 35);
+                tTank.setSpeed(0);
+                tTank.setPosition(400, 560);
+
+                tTank.turret = new Sprite(game, "turret.png", 100, 25);
+                tTank.turret.setImgAngle(45);
+                tTank.bullet = new Bullet(tTank);
+
+                tTank.checkKeys = function () {
+                    if (keysDown[K_A]) {
+                        this.changeXby(-2);
+                    }
+
+                    if (keysDown[K_D]) {
+                        this.changeXby(2);
+                    }
+
+                    // Always move turret with player tank
+                    this.turret.setPosition(this.x, this.y - 10);
+
+                    // Keys used to control turret and movement of the tank.
+
+                    if (keysDown[K_W]) {
+                        this.turret.changeImgAngleBy(-10);
+                        if (this.turret.getImgAngle() < -90) {
+                            this.turret.setImgAngle(-90);
+                        } // end if
+                    }
+
+                    if (keysDown[K_S]) {
+                        this.turret.changeImgAngleBy(10);
+                        if (this.turret.getImgAngle() > 90) {
+                            this.turret.setImgAngle(90);
+                        }
+                    }
+
+                    if (keysDown[K_SPACE]) {
+                        if (!this.bullet.visible) {
+                            this.bullet.fire();
+                        }
+
+                    }
+
+                    this.turret.update();
+                    this.bullet.checkGravity();
+                    this.bullet.update();
+
+                };
+
+                return tTank;
+            }
+
+            // The explosion object
+            function Explosion() {
+                var tExplosion = new Sprite(game, "explosion.png", 100, 50);
+                var exploding = false;
+                tExplosion.setSpeed(0);
+                tExplosion.setPosition(400, 300);
+                tExplosion.hide();
+
+                // Shows the explosion and play explosion sound
+                tExplosion.explode = function (tank) {
+                    explodeMp3 = new Sound("explode.mp3");
+                    explodeMp3.play();
+                    this.setPosition(tank.x, tank.y - 10);
+                    this.show();
+                    exploding = true;
+                    explosionTimer.reset();
+
+
+                };
+
+                // Makes sure each explosion hides after 0.5 seconds
+                tExplosion.checkDespawn = function () {
+
+                    // Changes player sprite back to normal (Flash effect)
+                    if (explosionTimer.getElapsedTime() > 0.1) {
+                        tankGreen.changeImage("tank.png");
+                    }
+                    if (exploding === true && explosionTimer.getElapsedTime() > 0.5) {
+                        this.hide();
+                        exploding = false;
+
+                    }
+                };
+
+                return tExplosion;
+
+            }
+
+            // The enemy tank object
+            function DroneTank() {
+                var tTank = new Sprite(game, "redTank.png", 70, 35);
+                tTank.setSpeed(0);
+                tTank.setBoundAction(CONTINUE);
+                var speed = Math.random() * 2 + 1;
+
+                enterTank(tTank);
+
+                // Enemy tanks move towards the player
+                tTank.move = function () {
+                    if (this.x < tankGreen.x) {
+                        this.changeXby(speed);
+                    }
+                    if (this.x > tankGreen.x) {
+                        this.changeXby(-speed);
+                    }
+
+                };
+
+                tTank.reset = function (tank) {
+                    enterTank(tank);
+                };
+
+                return tTank;
+
+            }
+
+            // Spawns enemy tanks at a random side of the screen
+            function enterTank(tank) {
+
+                // Randomly choose a number, either 0 or 1
+                var tankStart = parseInt(Math.random() + 0.5);
+
+                // Spawn at the left side if the number is 0, otherwise spawn on 
+                // the right side
+                if (tankStart === 0) {
+                    tank.setPosition(-50, 560);
+                } else {
+                    tank.setPosition(850, 560);
+                }
+            }
+
+            // Check to see if the player's bullet has collided with an enemy or 
+            // if an enemy has collided with the player
+            function checkHit() {
+                for (var tank in tanks) {
+                    if (tankGreen.bullet.collidesWith(tanks[tank])) {
+                        tankGreen.bullet.hide();
+
+                        explosions[tank].explode(tanks[tank]);
+                        score += 10;
+                        tanks[tank].reset(tanks[tank]);
+                    }
+                    if (tanks[tank].collidesWith(tankGreen))
+                    {
+                        hurtMp3 = new Sound("hurt.mp3");
+                        hurtMp3.play();
+                        explosions[tank].explode(tanks[tank]);
+                        tankGreen.changeImage("tankHurt.png");
+                        tanks[tank].reset(tanks[tank]);
+                        health -= 1;
+                    }
+                }
+            }
+
+            // Check to see if the player has enough to score to advance to the 
+            // next difficulty level
+            function checkDifficulty() {
+                if (score >= scoreThreshold) {
+                    numTanks += 1;
+                    level += 1;
+                    makeEnemies();
+                    scoreThreshold += 100;
+                }
+                // Shows the current level and the current score goal
+                message.innerHTML = "<h2>Level: " + level + "</h2></br>";
+                message.innerHTML += "Next level at score " + scoreThreshold;
+
+            }
+
+            // Check to see if the player has died, and end the game if so
+            function checkOver() {
+                if (health <= 0) {
+                    health = 0;
+                    message.innerHTML = "<h2>GAME OVER!</h2></br>";
+                    message.innerHTML += "You survived " + parseInt(timer.getElapsedTime()) + " seconds.</br>";
+                    message.innerHTML += "Your score was " + score + ".";
+                    restartButton.style.display = "block";
+                    game.hide();
+                    game.stop();
+                }
+
+            }
+
+            // Creates a new wave of enemies based on the current level
+            function makeEnemies() {
+                tanks = new Array(numTanks);
+                for (i = 0; i < numTanks; i++) {
+                    tanks[i] = new DroneTank();
+                }
+
+                // Creates the explosion object associated with each tank
+                explosions = new Array(numTanks);
+                for (i = 0; i < numTanks; i++) {
+                    explosions[i] = new Explosion();
+                }
+            }
+
+            // Updates all enemy tanks 
+            function updateEnemies() {
+                for (i = 0; i < numTanks; i++) {
+
+                    tanks[i].update();
+                    tanks[i].move();
+                }
+
+                //Updates the explosion object associated with each tank
+                for (i = 0; i < numTanks; i++) {
+                    explosions[i].checkDespawn();
+                    explosions[i].update();
+                }
+            }
+
+            // Updates the HUD text to reflect current game conditions
+            function showStats() {
+                var output = "Health: " + health + "</br>";
+                output += "Score: " + score + "</br>";
+                output += "Time: " + parseInt(timer.getElapsedTime());
+
+
+                stats.innerHTML = output;
+            }
+
+            // Checks to see if the music has ended and restarts it if needed
+            function checkMusic() {
+                if (musicTimer.getElapsedTime() > MUSIC_LENGTH) {
+                    musicTimer.reset();
+                    musicMp3.play();
+                }
+            }
+
+            // Initialize function that is run on page load
+            function init() {
+                game = new Scene();
+                game.setSize(800, 600);
+
+                restartButton = document.getElementById("restart");
+                restartButton.style.display = "none";
+
+                // Initial main timer, explosion spawn timer, and music timer
+                timer = new Timer();
+                explosionTimer = new Timer();
+                musicTimer = new Timer();
+                timer.reset();
+
+                stats = document.getElementById("stats");
+                message = document.getElementById("message");
+
+                // Initialize starting values for game variables
+                health = 5;
+                score = 0;
+                level = 1;
+                scoreThreshold = 100;
+                numTanks = 2;
+
+                tankGreen = new UserTank();
+
+                makeEnemies();
+
+                musicMp3 = new Sound("music.mp3");
+                musicMp3.play();
+
+                background = new Sprite(game, "background.png", 800, 600);
+                background.setSpeed(0);
+                background.setPosition(400, 300);
+
+                game.start();
+
+            }
+
+            // Clears screen, updates all sprites and game conditions, and 
+            // checks if game is over
+            function update() {
+                game.clear();
+
+                background.update();
+
+                tankGreen.checkKeys();
+                checkHit();
+                checkDifficulty();
+                showStats();
+                updateEnemies();
+                tankGreen.update();
+
+                checkOver();
+
+            }
+        </script>
+        <style type="text/css">
+            #stats {
+                text-align: center;
+                font-family: monospace;
+                z-index: 999;
+                font-size: 150%;
+            }
+
+            #message {
+                text-align: center;
+                font-family: monospace;
+                z-index: 998;
+                font-size: 150%;
+            }
+
+            #restart {
+                margin: auto;
+                padding: 10px;
+
+            }
+
+            canvas {
+                padding-right: 0;
+                padding-left: 0;
+                margin-left: auto;
+                margin-right: auto;
+                display: block;
+            }
+
+            h2 {
+                text-align: center;
+            }
+
+            body {
+                background-color:gray;
+                color: white;
+            }
+
+        </style>
+    </head>
+    <body onload = "init()">
+        <h2>W and S to control the turret, A and D to control the tank, space 
+            to fire</h2>
+
+        <div id="message"> 
+
+        </div>
+        <br>
+        <div id="stats"> </div>
+        <br>
+
+        <button type = "button"
+                id = "restart"
+                onclick = "location.reload()">
+            Restart
+        </button>
+
+    </body>
+
+</html>
